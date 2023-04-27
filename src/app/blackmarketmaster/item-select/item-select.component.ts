@@ -5,7 +5,9 @@ import { ItemService } from "../item.service";
 import { ItemDetailed } from "../item-detailed";
 import { Item } from "../item";
 import { forkJoin } from "rxjs";
-import * as moment from "moment";
+import moment from "moment";
+import * as itemDetails from "../../../../databasecollections - dbname - blackmarketmaster/index";
+import { newArray } from "@angular/compiler/src/util";
 
 @Component({
   selector: "app-item-select",
@@ -23,12 +25,14 @@ export class ItemSelectComponent implements OnInit {
 
   selected_items: Array<{ name: string; show: string }> = []; //SelectedItem[];
   quality: string = "1";
-  minutes: number = 3;
-  tax: number = 3;
-  returns: number = 5000;
+  minutes: number = 999999999;
+  Mminutes: number = 7;
+  enchantment: string = "0";
+  tax: number = 8;
+  returns: number = 10000;
   usable: boolean = true;
 
-  constructor(private itemService: ItemService) {}
+  constructor(private itemService: ItemService) { }
 
   ngOnInit() {
     this.itemService.getItemType().then((item_types: ItemType[]) => {
@@ -36,9 +40,26 @@ export class ItemSelectComponent implements OnInit {
         this.itemService
           .getItemClass(item_type.Type)
           .then((item_class: ItemClass[]) => {
-            item_type.Class = item_class.map(item_class => {
-              return item_class;
-            });
+            if (item_type.Type === 'accessories') {
+              item_type.Class = [
+                {
+                  "id": "",
+                  "Name": "Bag",
+                  "Type": "bag",
+                  "Selected": false
+                },
+                {
+                  "id": "",
+                  "Name": "Cape",
+                  "Type": "cape",
+                  "Selected": false
+                }
+              ]
+            } else {
+              item_type.Class = item_class.map(item_class => {
+                return item_class;
+              });
+            }
           });
 
         return item_type;
@@ -46,9 +67,43 @@ export class ItemSelectComponent implements OnInit {
     });
   }
 
+  cop(x: ItemSelectComponent) {
+
+    const selBox = document.createElement('textarea');
+    selBox.style.position = 'fixed';
+    selBox.style.left = '0';
+    selBox.style.top = '0';
+    selBox.style.opacity = '0';
+    selBox.value = x["LocalizedNames"] && x["LocalizedNames"].length
+      ? x["LocalizedNames"][0]["EN-US"]
+      : "";
+    document.body.appendChild(selBox);
+    selBox.focus();
+    selBox.select();
+    document.execCommand('copy');
+    document.body.removeChild(selBox);
+
+  }
+
+  typeClick(selected_item_type: ItemType) {
+    if (this.selected_items.length >= 30) {
+      alert("You can only pick 30 items at the same time.");
+      return;
+    }
+
+    this.item_types.forEach(item_type => {
+      if (item_type.Type == selected_item_type.Type) {
+        selected_item_type.Class.forEach(item_class => {
+          var selectedItem = { name: item_class.Type, show: item_class.Name };
+          this.selected_items.push(selectedItem);
+        });
+      }
+    });
+  }
+
   itemClick(item_class: ItemClass) {
-    if (this.selected_items.length >= 5) {
-      alert("You can only pick 5 items at the same time.");
+    if (this.selected_items.length >= 30) {
+      alert("You can only pick 30 items at the same time.");
       return;
     }
 
@@ -58,7 +113,6 @@ export class ItemSelectComponent implements OnInit {
         return;
       }
     }
-
     var selectedItem = { name: item_class.Type, show: item_class.Name };
     this.selected_items.push(selectedItem);
   }
@@ -75,8 +129,14 @@ export class ItemSelectComponent implements OnInit {
     this.quality = value;
   }
 
+  onChangeEnchantment(value: string) {
+    this.enchantment = value;
+  }
   onChangeMinutes(value: number) {
     this.minutes = value;
+  }
+  onChangeMMinutes(value: number) {
+    this.Mminutes = value;
   }
 
   onChangeTax(value: number) {
@@ -87,18 +147,18 @@ export class ItemSelectComponent implements OnInit {
     this.returns = value;
   }
 
-  consultarMaster() { 
+  consultarMaster() {
     this.usable = false;
     var self = this;
 
     var promises = [];
-    this.selected_items.forEach(function(d) {
+    this.selected_items.forEach(function (d) {
       promises.push(self.itemService.getItem(d.name));
     });
 
     this.itemmm = [];
- 
-    if(promises.length == 0){
+
+    if (promises.length == 0) {
       this.usable = true;
     }
 
@@ -113,15 +173,17 @@ export class ItemSelectComponent implements OnInit {
         });
       });
 
+
+
       this.itemService
-        .blackMarketMaster(this.itemmm, this.quality)
+        .blackMarketMaster(this.itemmm, this.quality, this.enchantment)
         .then((item_class: Item[]) => {
           this.itemmm = item_class.map(item_class => {
             return item_class;
           });
 
           this.itemService
-            .procesarDatos(this.itemmm, this.minutes, this.tax, this.returns)
+            .procesarDatos(this.itemmm, this.minutes, this.Mminutes, this.tax, this.returns)
             .then((resulllt: Item[]) => {
               this.itemm = resulllt.map(item_class => {
                 item_class.Enchantment = item_class.ItemID.split("@")[1];
@@ -134,23 +196,18 @@ export class ItemSelectComponent implements OnInit {
                 return item_class;
               });
 
-              if(this.itemm.length <= 0)
-                alert("No deals found.");
+              // if (this.itemm.length <= 0)
+              //   alert("No deals found.");
             })
             .then(() => {
               this.itemm.forEach(element => {
-                this.itemService
-                  .getItemDetail(element.ItemID)
-                  .then((item_detailed: ItemDetailed[]) => {
-                    element.LocalizedNames = item_detailed.map(
-                      item_detailed => {
-                        return item_detailed.LocalizedNames;
-                      }
-                    );
-                  });
+                const item = JSON.parse(JSON.stringify(itemDetails.items)).find(obj => obj.UniqueName === element.ItemID);
+                element.LocalizedNames = item ? [item.LocalizedNames] : null;
               });
-            }).then(()=> this.usable = true);
+            }).then(() => this.usable = true);
         });
+
     });
+
   }
 }

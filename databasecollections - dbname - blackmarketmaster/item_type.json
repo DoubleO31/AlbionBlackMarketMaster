@@ -6,12 +6,6 @@
   "Type": "armor"
 },{
   "_id": {
-    "$oid": "5e5443596d342549bc98802f"
-  },
-  "Name": "Gathering Gear",
-  "Type": "gathering_gear"
-},{
-  "_id": {
     "$oid": "5e54438b6d342549bc988031"
   },
   "Name": "Melee",
@@ -34,12 +28,6 @@
   },
   "Name": "Accessories",
   "Type": "accessories"
-},{
-  "_id": {
-    "$oid": "5e5443ca6d342549bc988034"
-  },
-  "Name": "Tool",
-  "Type": "tool"
 },{
   "_id": {
     "$oid": "5e5443786d342549bc988030"
